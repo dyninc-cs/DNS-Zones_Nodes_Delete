@@ -1,0 +1,43 @@
+This script prints the Zones and related Nodes for the user's
+account. The script will let the user delete Zones from their account.
+(Warning: If you delete a Zone in your account you will delete every record
+and node under that zone.) The script will also let the user delete nodes 
+from their account. (Again if you delete a Node everthing under that Node 
+will be deleted.)
+
+The script uses a credentials configuration file that is in the same directory 
+named credentilas.cfg with the format:
+
+[Dynect]
+user : user_name
+customer : customer_name
+password : password
+
+Usage: %python znd.py [-l|-z|-n|-N|-Z|-h]
+
+Options:
+  -h, --help            Show the help message and exit
+  -l, --lists           list the zone and nodes in account
+  -z, --zones           zone delete
+  -n, --nodes           node delete
+  -N NODE_NAME, --node_name=NODE_NAME
+                        name of node
+  -Z ZONE_NAME, --zone_name=ZONE_NAME
+                        name of zone
+
+The library is available at: https://github.com/dyninc/Dynect-API-Python-Library
+
+=============================================================================
+Usage Scenarios:
+
+Want to print all Zones and Nodes
+% python znd.py -l
+
+Want to delete a Zone
+% python znd.py -z -Z <name of zone here>
+
+Want to delete a Node
+% python znd.py -z -Z <name of zone here> -N <name of node here>
+
+
+
