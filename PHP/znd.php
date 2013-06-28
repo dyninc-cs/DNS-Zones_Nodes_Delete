@@ -228,7 +228,9 @@ function api_fail($token, $api_jsonref)
                         #api logout or fail
 			$session_uri = 'https://api2.dynect.net/REST/Session/'; 
 			$api_params = array (''=>'');
-			$decoded_result = api_request($session_uri, 'DELETE', $api_params,  $token);	
+			# If token isnt empty, logout
+			if($token != "")
+				$decoded_result = api_request($session_uri, 'DELETE', $api_params,  $token);	
                         exit;
                 }
                 else {
