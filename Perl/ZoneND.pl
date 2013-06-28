@@ -48,8 +48,6 @@ GetOptions(
 
 #Printing help menu
 if ($opt_help) {
-	print "\tAPI integration requires paramaters stored in config.cfg\n\n";
-	
 	print "\tOptions:\n";
 	print "\t\t-h, --help\t\t Show the help message and exit\n";
 	print "\t\t-l, --lists\t\t List all of the zone and nodes in an account\n";
@@ -57,14 +55,6 @@ if ($opt_help) {
 	print "\t\t-n, --nodes\t\t Set the node to delete\n";
 	print "\t\t-N, --NODE_NAME\t\t Name of node\n";
 	print "\t\t-Z, --ZONE_NAME\t\t Name of zone\n\n";
-	
-	print "\tExample Usage Scenarios:\n";
-	print "\t\tWant to print all Zones and Nodes\n";
-	print "\t\t\$ perl znd.py -l\n\n";
-	print "\t\tWant to delete a Zone\n";
-	print "\t\t\$ perl znd.py -z -Z <name of zone here>\n\n";
-	print "\t\tWant to delete a Node\n";
-	print "\t\t\$ perl znd.py -n -Z <name of zone here> -N <name of node here>\n\n"; 
 	exit;
 }
 
@@ -96,21 +86,15 @@ my $session_uri = 'https://api2.dynect.net/REST/Session';
 my %api_param = ( 
 'customer_name' => $apicn,
 'user_name' => $apiun,
-'password' => $apipw,
-);
-
-#API Login
+'password' => $apipw,);
 my $api_request = HTTP::Request->new('POST',$session_uri);
 $api_request->header ( 'Content-Type' => 'application/json' );
 $api_request->content( to_json( \%api_param ) );
-
 my $api_lwp = LWP::UserAgent->new;
 my $api_result = $api_lwp->request( $api_request );
-
 my $api_decode = decode_json ( $api_result->content ) ;
-my $api_key = $api_decode->{'data'}->{'token'};
+my $api_token = $api_decode->{'data'}->{'token'};
 
-#$api_decode = &api_request("https://api2.dynect.net/REST/Session/", 'POST', %api_param); 
 
 #Listing Zone/Nodes
 if($opt_list)
@@ -118,7 +102,7 @@ if($opt_list)
 	#Set param to empty
 	%api_param = ();
 	$session_uri = "https://api2.dynect.net/REST/Zone/";
-	$api_decode = &api_request($session_uri, 'GET', %api_param); 
+	$api_decode = &api_request($session_uri, 'GET', $api_token ,  %api_param); 
 	foreach my $zoneIn (@{$api_decode->{'data'}})
 	{
 		#Print each zone	
@@ -127,7 +111,7 @@ if($opt_list)
 		$zoneIn =~ /\/REST\/Zone\/(.*)$/;
 		%api_param = ();
 		$session_uri = "https://api2.dynect.net/REST/NodeList/$1";
-		$api_decode = &api_request($session_uri, 'GET', %api_param); 
+		$api_decode = &api_request($session_uri, 'GET', $api_token,  %api_param); 
 		
 		#Print each node in zone
 		print "Nodes: \n";
@@ -141,14 +125,14 @@ if($opt_list)
 if($opt_zoneDel)
 {
 	#If -z is set but -Z is not, tell the user.
-	if($opt_zoneName eq ""){
-		print "\nNo zone name specified, please use: \n\t\t -z -Z <Name of zone here>\n";
-	}
+	if($opt_zoneName eq "")
+		{print "\nNo zone name specified, please use: \n\t\t -z -Z <Name of zone here>\n";}
+	
 	#If -Z is set, delete the zone
 	else{
 		%api_param = ();
 		$session_uri = "https://api2.dynect.net/REST/Zone/$opt_zoneName/";
-		&api_request($session_uri, 'DELETE', %api_param); 
+		&api_request($session_uri, 'DELETE', $api_token, %api_param); 
 		print "Zonefile: $opt_zoneName successfully deleted.\n";
 	}
 }
@@ -157,32 +141,30 @@ if($opt_zoneDel)
 if($opt_nodeDel)
 {
 	#If -n is set but -N is not, tell the user.
-	if($opt_nodeName eq ""){
-		print "\nNo node name specified, please use: \n\t\t -n -N <Name of node here>\n";
-	}
+	if($opt_nodeName eq "")
+		{print "\nNo node name specified, please use: \n\t\t -n -N <Name of node here>\n";}
 	#If -n is set and -N is set but -Z is not set, tell the user.
-	elsif($opt_zoneName eq ""){	
-		print "\nNo zone name specified, please use: \n\t\t -n -N <Name of node here> -Z <Name of zone here>\n";
-	}
+	elsif($opt_zoneName eq "")
+		{print "\nNo zone name specified, please use: \n\t\t -n -N <Name of node here> -Z <Name of zone here>\n";}
 	#If -z -Z -N are set, delete the node
 	else{
 		%api_param = ();
 		$session_uri = "https://api2.dynect.net/REST/Node/$opt_zoneName/$opt_nodeName/";
-		&api_request($session_uri, 'DELETE', %api_param); 
+		&api_request($session_uri, 'DELETE', $api_token, %api_param); 
 		print "Node: $opt_nodeName sucessfully deleted.\n";
-		&api_publish(); #Publish zone
+		&api_publish($api_token); #Publish zone
 	}
 }
 
 #api logout
 %api_param = ();
 $session_uri = 'https://api2.dynect.net/REST/Session';
-&api_request($session_uri, 'DELETE', %api_param); 
+&api_request($session_uri, 'DELETE', $api_token, %api_param); 
 
 #Accepts Zone URI, Request Type, and Any Parameters
 sub api_request{
 	#Get in variables, send request, send parameters, get result, decode, display if error
-	my ($zone_uri, $req_type, %api_param) = @_;
+	my ($zone_uri, $req_type, $api_key, %api_param) = @_;
 	$api_request = HTTP::Request->new($req_type, $zone_uri);
 	$api_request->header ( 'Content-Type' => 'application/json', 'Auth-Token' => $api_key );
 	$api_request->content( to_json( \%api_param ) );
@@ -194,17 +176,19 @@ sub api_request{
 
 sub api_publish{
 	#Check if the zone exists and is ready to publish
+	my ( $api_key) = @_;
 	do {
 		sleep(5);
-		$api_decode = &api_request("https://api2.dynect.net/REST/Zone/$opt_zoneName/", 'GET', %api_param); 
+		$api_decode = &api_request("https://api2.dynect.net/REST/Zone/$opt_zoneName/", 'GET', $api_key,  %api_param); 
 		$api_decode = &api_fail(\$api_key, $api_decode) unless ($api_decode->{'status'} eq 'success');
+		print Dumper($api_decode);
 	} while ( $api_decode->{'data'}->{'serial'} == 0 );
 
 	#Publishing the zone
 	
 	my $zone_uri = "https://api2.dynect.net/REST/Zone/$opt_zoneName/";
 	%api_param = ( 'publish' => 1);
-	$api_decode = &api_request("$zone_uri", 'PUT', %api_param); 
+	$api_decode = &api_request("$zone_uri", 'PUT', $api_key, %api_param); 
 	$api_decode = &api_fail(\$api_key, $api_decode) unless ($api_decode->{'status'} eq 'success');
 }
 
