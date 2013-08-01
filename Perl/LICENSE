@@ -28,35 +28,3 @@ OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
-
-___________________________________________________________________________________
-
-This script searches and prints out the zones and their related nodes.
-This will delete a zone or node depending on which flag is set (-z or -n).
-The upper case flag (-Z or -N) needs to be set to the name of zone and node (if used).
-
-The credentials are read from a configuration file in the
-same directory named config.cfg in the format:
-
-[Dynect]
-un: user_name
-cn: customer_name
-pw: password
-
-Usage:
-This will print out the list of zones & nodes
-perl znd.py [-l]
-
-This will delete the node "node.example.com"
-perl znd.py -Z example.com [-n] -N node.example.com
-
-This will delete the zone and all of its nodes
-perl znd.py [-z] -Z example.com
-
-Options:
--h, --help          Show the help message and exit
--l, --lists         List all of the zone and nodes in an account
--z, --zones         Set the zone to delete
--n, --nodes         Set the node to delete
--N  --node_name     Name of the node [Required for node delete]
--Z  --zone_name     Name of the zone [Required]
