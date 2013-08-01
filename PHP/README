@@ -1,0 +1,62 @@
+Dyn Inc, Integration Team Deliverable
+"Copyright © 2013, Dyn Inc.
+All rights reserved.
+ 
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+ 
+* Redistributions of source code must retain the above copyright notice,
+  this list of conditions and the following disclaimer.
+ 
+* Redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions and the following disclaimer in the
+  documentation and/or other materials provided with the distribution.
+ 
+* Neither the name of Dynamic Network Services, Inc. nor the names of
+  its contributors may be used to endorse or promote products derived
+  from this software without specific prior written permission.
+ 
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
+
+___________________________________________________________________________________
+
+This script searches and prints out the zones and their related nodes.
+This will delete a zone or node depending on which flag is set (-z or -n).
+The upper case flag (-Z or -N) needs to be set to the name of zone and node (if used).
+
+The credentials are read from a configuration file in the
+same directory named config.cfg in the format:
+
+[Dynect]
+un: user_name
+cn: customer_name
+pw: password
+
+Usage:
+This will print out the list of zones & nodes
+php znd.py [-l]
+
+This will delete the node "node.example.com"
+php znd.py -Z example.com [-n] -N node.example.com
+
+This will delete the zone and all of its nodes
+php znd.py [-z] -Z example.com
+
+Options:
+-h	Show the help message and exit
+-l	List all of the zone and nodes in an account
+-z	Set the zone to delete
+-n	Set the node to delete
+-N	Name of the node [Required for node delete]
+-Z	Name of the zone [Required]
