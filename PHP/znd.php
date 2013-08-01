@@ -1,18 +1,14 @@
 #!/usr/bin/php
 <?php
 
-#This script searches a users account for all thier zones.
-#Then the script prints out the zones and their related nodes.
-#
-#The credentials are read from a configuration file in the 
-#same directory named config.ini in the format:
+#This script searches and prints out the zones and their related nodes. 
+#This will delete a zone or node depending on which flag is set (-z or -n). 
+#The upper case flag (-Z or -N) needs to be set to the name of zone and node (if used).
 
-#[Dynect]
-#user : user_name
-#customer : customer_name
-#password : password
-
-#Usage: %php znd.php [-l|-z|-n|-N|-Z|-h]
+#[Dynect] 
+#un: user_name 
+#cn: customer_name 
+#pw: password
 
 #Options:
 #-h, --help          show the help message and exit
@@ -22,6 +18,13 @@
 #-N  --node_name     name of node
 #-Z  --zone_name     name of zone
 
+#Example Usage Scenarios:
+#Want to print all Zones and Nodes
+#php znd.php -l
+#Want to delete a Zone\n
+#php znd.php -z -Z <name of zone here>
+#Want to delete a Node\n
+#php znd.php -n -Z <name of zone here> -N <name of node here>
 
 #Get options from command line
 $shortopts .= "Z:";  
@@ -30,15 +33,7 @@ $shortopts .= "N:";
 $shortopts .= "n";  
 $shortopts .= "h"; 
 $shortopts .= "l"; 
-$longopts  = array(
-			"ZONE_NAME:",	
-			"zones",
-			"NODE_NAME:",
-			"nodes",   
-			"help",
-			"list");	
 $options = getopt($shortopts, $longopts);
-#var_dump($options);
 
 $opt_zoneName .= $options["Z"]; 
 $opt_zoneName .= $options["ZONE_NAME"]; 
