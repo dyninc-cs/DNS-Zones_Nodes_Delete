@@ -1,7 +1,7 @@
 #!/usr/bin/perl
-#This script searches a users account for all thier zones.
-#Then the script prints out the zones and their related nodes.
-
+#This script searches and prints out the zones and their related nodes.
+#This will delete a zone or node depending on which flag is set (-z or -n).
+#The upper case flag (-Z or -N) needs to be set to the name of zone and node (if used).
 #The credentials are read from a configuration file in the 
 #same directory named config.cfg in the format:
 
@@ -10,19 +10,26 @@
 #customer : customer_name
 #password : password
 
-#Usage: %perl znd.py [-l|-z|-n|-N|-Z|-h]
+#Usage: 
+#This will print out the list of zones & nodes
+#perl znd.py [-l]
+
+#This will delete the node "node.example.com" 
+#perl znd.py -Z example.com [-n] -N node.example.com
+
+#This will delete the zone and all of its nodes
+#perl znd.py [-z] -Z example.com 
 
 #Options:
-#-h, --help          show the help message and exit
-#-l, --lists         list the zone and nodes in account
-#-z, --zones         zone delete
-#-n, --nodes         node delete
-#-N  --node_name     name of node
-#-Z  --zone_name     name of zone
+#-h, --help          Show the help message and exit
+#-l, --lists         List all of the zone and nodes in an account
+#-z, --zones         Set the zone to delete
+#-n, --nodes         Set the node to delete
+#-N  --node_name     Name of the node [Required for node delete]
+#-Z  --zone_name     Name of the zone [Required]
 
 use warnings;
 use strict;
-use Data::Dumper;
 use XML::Simple;
 use Config::Simple;
 use Getopt::Long qw(:config no_ignore_case);
@@ -48,13 +55,13 @@ GetOptions(
 
 #Printing help menu
 if ($opt_help) {
-	print "\tOptions:\n";
-	print "\t\t-h, --help\t\t Show the help message and exit\n";
-	print "\t\t-l, --lists\t\t List all of the zone and nodes in an account\n";
-	print "\t\t-z, --zones\t\t Set the zone to delete\n";
-	print "\t\t-n, --nodes\t\t Set the node to delete\n";
-	print "\t\t-N, --NODE_NAME\t\t Name of node\n";
-	print "\t\t-Z, --ZONE_NAME\t\t Name of zone\n\n";
+	print "Options:\n";
+	print "\t-h, --help\t\t Show the help message and exit\n";
+	print "\t-l, --lists\t\t List all of the zone and nodes in an account\n";
+	print "\t-z, --zones\t\t Set the zone to delete\n";
+	print "\t-n, --nodes\t\t Set the node to delete\n";
+	print "\t-N, --NODE_NAME\t\t Name of node [Required for node delete]\n";
+	print "\t-Z, --ZONE_NAME\t\t Name of zone [Required]\n\n";
 	exit;
 }
 
@@ -105,10 +112,11 @@ if($opt_list)
 	$api_decode = &api_request($session_uri, 'GET', $api_token ,  %api_param); 
 	foreach my $zoneIn (@{$api_decode->{'data'}})
 	{
-		#Print each zone	
-		print "\nZone: $zoneIn\n";
 		#Getting the zone name out of the response.
-		$zoneIn =~ /\/REST\/Zone\/(.*)$/;
+		$zoneIn =~ /\/REST\/Zone\/(.*)\/$/;
+		#Print each zone	
+		print "\nZone: $1\n";
+
 		%api_param = ();
 		$session_uri = "https://api2.dynect.net/REST/NodeList/$1";
 		$api_decode = &api_request($session_uri, 'GET', $api_token,  %api_param); 
@@ -181,11 +189,9 @@ sub api_publish{
 		sleep(5);
 		$api_decode = &api_request("https://api2.dynect.net/REST/Zone/$opt_zoneName/", 'GET', $api_key,  %api_param); 
 		$api_decode = &api_fail(\$api_key, $api_decode) unless ($api_decode->{'status'} eq 'success');
-		print Dumper($api_decode);
 	} while ( $api_decode->{'data'}->{'serial'} == 0 );
 
 	#Publishing the zone
-	
 	my $zone_uri = "https://api2.dynect.net/REST/Zone/$opt_zoneName/";
 	%api_param = ( 'publish' => 1);
 	$api_decode = &api_request("$zone_uri", 'PUT', $api_key, %api_param); 
