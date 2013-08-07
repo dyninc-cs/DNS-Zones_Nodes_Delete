@@ -36,6 +36,11 @@ use Getopt::Long qw(:config no_ignore_case);
 use LWP::UserAgent;
 use JSON;
 
+#Import DynECT handler
+use FindBin;
+use lib "$FindBin::Bin/DynECT";  # use the parent directory
+require DynECT::DNS_REST;
+
 #Get Options
 my $opt_list;
 my $opt_zoneDel;
@@ -43,6 +48,7 @@ my $opt_nodeDel;
 my $opt_nodeName="";
 my $opt_zoneName="";
 my $opt_help;
+my %api_param = ();
 
 GetOptions(
 	'help' => \$opt_help,
@@ -89,18 +95,9 @@ exit;
 };
 
 #API login
-my $session_uri = 'https://api2.dynect.net/REST/Session';
-my %api_param = ( 
-'customer_name' => $apicn,
-'user_name' => $apiun,
-'password' => $apipw,);
-my $api_request = HTTP::Request->new('POST',$session_uri);
-$api_request->header ( 'Content-Type' => 'application/json' );
-$api_request->content( to_json( \%api_param ) );
-my $api_lwp = LWP::UserAgent->new;
-my $api_result = $api_lwp->request( $api_request );
-my $api_decode = decode_json ( $api_result->content ) ;
-my $api_token = $api_decode->{'data'}->{'token'};
+my $dynect = DynECT::DNS_REST->new;
+$dynect->login( $apicn, $apiun, $apipw) or
+	die $dynect->message;
 
 
 #Listing Zone/Nodes
@@ -108,9 +105,9 @@ if($opt_list)
 {
 	#Set param to empty
 	%api_param = ();
-	$session_uri = "https://api2.dynect.net/REST/Zone/";
-	$api_decode = &api_request($session_uri, 'GET', $api_token ,  %api_param); 
-	foreach my $zoneIn (@{$api_decode->{'data'}})
+	$dynect->request( "/REST/Zone", 'GET',  \%api_param) or die $dynect->message;
+
+	foreach my $zoneIn (@{$dynect->response->{'data'}})
 	{
 		#Getting the zone name out of the response.
 		$zoneIn =~ /\/REST\/Zone\/(.*)\/$/;
@@ -118,12 +115,11 @@ if($opt_list)
 		print "\nZone: $1\n";
 
 		%api_param = ();
-		$session_uri = "https://api2.dynect.net/REST/NodeList/$1";
-		$api_decode = &api_request($session_uri, 'GET', $api_token,  %api_param); 
-		
+		$dynect->request( "/REST/NodeList/$1", 'GET',  \%api_param) or die $dynect->message;
+
 		#Print each node in zone
 		print "Nodes: \n";
-		foreach my $nodeIn (@{$api_decode->{'data'}})
+		foreach my $nodeIn (@{$dynect->request->{'data'}})
 			{print "\t$nodeIn\n";}
 	}
 }
@@ -139,8 +135,7 @@ if($opt_zoneDel)
 	#If -Z is set, delete the zone
 	else{
 		%api_param = ();
-		$session_uri = "https://api2.dynect.net/REST/Zone/$opt_zoneName/";
-		&api_request($session_uri, 'DELETE', $api_token, %api_param); 
+		$dynect->request( "/REST/Zone/$opt_zoneName", 'DELETE',  \%api_param) or die $dynect->message;
 		print "Zonefile: $opt_zoneName successfully deleted.\n";
 	}
 }
@@ -157,82 +152,12 @@ if($opt_nodeDel)
 	#If -z -Z -N are set, delete the node
 	else{
 		%api_param = ();
-		$session_uri = "https://api2.dynect.net/REST/Node/$opt_zoneName/$opt_nodeName/";
-		&api_request($session_uri, 'DELETE', $api_token, %api_param); 
+		$dynect->request( "/REST/Node/$opt_zoneName/$opt_nodeName", 'DELETE',  \%api_param) or die $dynect->message;
 		print "Node: $opt_nodeName sucessfully deleted.\n";
-		&api_publish($api_token); #Publish zone
+		%api_param = ( 'publish' => 1);
+		$dynect->request( "/REST/Zone/$opt_zoneName", 'PUT',  \%api_param) or die $dynect->message;
 	}
 }
 
-#api logout
-%api_param = ();
-$session_uri = 'https://api2.dynect.net/REST/Session';
-&api_request($session_uri, 'DELETE', $api_token, %api_param); 
-
-#Accepts Zone URI, Request Type, and Any Parameters
-sub api_request{
-	#Get in variables, send request, send parameters, get result, decode, display if error
-	my ($zone_uri, $req_type, $api_key, %api_param) = @_;
-	$api_request = HTTP::Request->new($req_type, $zone_uri);
-	$api_request->header ( 'Content-Type' => 'application/json', 'Auth-Token' => $api_key );
-	$api_request->content( to_json( \%api_param ) );
-	$api_result = $api_lwp->request($api_request);
-	$api_decode = decode_json( $api_result->content);
-	$api_decode = &api_fail(\$api_key, $api_decode) unless ($api_decode->{'status'} eq 'success');
-	return $api_decode;
-}
-
-sub api_publish{
-	#Check if the zone exists and is ready to publish
-	my ( $api_key) = @_;
-	do {
-		sleep(5);
-		$api_decode = &api_request("https://api2.dynect.net/REST/Zone/$opt_zoneName/", 'GET', $api_key,  %api_param); 
-		$api_decode = &api_fail(\$api_key, $api_decode) unless ($api_decode->{'status'} eq 'success');
-	} while ( $api_decode->{'data'}->{'serial'} == 0 );
-
-	#Publishing the zone
-	my $zone_uri = "https://api2.dynect.net/REST/Zone/$opt_zoneName/";
-	%api_param = ( 'publish' => 1);
-	$api_decode = &api_request("$zone_uri", 'PUT', $api_key, %api_param); 
-	$api_decode = &api_fail(\$api_key, $api_decode) unless ($api_decode->{'status'} eq 'success');
-}
-
-#Expects 2 variable, first a reference to the API key and second a reference to the decoded JSON response
-sub api_fail {
-	my ($api_keyref, $api_jsonref) = @_;
-	#set up variable that can be used in either logic branch
-	my $api_request;
-	my $api_result;
-	my $api_decode;
-	my $api_lwp = LWP::UserAgent->new;
-	my $count = 0;
-	#loop until the job id comes back as success or program dies
-	while ( $api_jsonref->{'status'} ne 'success' ) {
-		if ($api_jsonref->{'status'} ne 'incomplete') {
-			foreach my $msgref ( @{$api_jsonref->{'msgs'}} ) {
-				print "API Error:\n";
-				print "\tInfo: $msgref->{'INFO'}\n" if $msgref->{'INFO'};
-				print "\tLevel: $msgref->{'LVL'}\n" if $msgref->{'LVL'};
-				print "\tError Code: $msgref->{'ERR_CD'}\n" if $msgref->{'ERR_CD'};
-				print "\tSource: $msgref->{'SOURCE'}\n" if $msgref->{'SOURCE'};
-			};
-			#api logout or fail
-			$api_request = HTTP::Request->new('DELETE','https://api2.dynect.net/REST/Session');
-			$api_request->header ( 'Content-Type' => 'application/json', 'Auth-Token' => $$api_keyref );
-			$api_result = $api_lwp->request( $api_request );
-			$api_decode = decode_json ( $api_result->content);
-			exit;
-		}
-		else {
-			sleep(5);
-			my $job_uri = "https://api2.dynect.net/REST/Job/$api_jsonref->{'job_id'}/";
-			$api_request = HTTP::Request->new('GET',$job_uri);
-			$api_request->header ( 'Content-Type' => 'application/json', 'Auth-Token' => $$api_keyref );
-			$api_result = $api_lwp->request( $api_request );
-			$api_jsonref = decode_json( $api_result->content );
-		}
-	}
-	$api_jsonref;
-}
-
+#API logout
+$dynect->logout;
